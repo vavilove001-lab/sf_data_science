@@ -1,1 +1,5 @@
-Projects/PROJECT-3. EDA + Feature Engineering/data/hotels.csv
+data/
+data/hotels_test.csv
+data/hotels_train.csv
+data/hotels.csv
+data/submission.csv

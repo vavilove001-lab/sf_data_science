@@ -206,3 +206,6 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 Projects/PROJECT-3. EDA + Feature Engineering/data/hotels.csv
+Projects/PROJECT-3. EDA + Feature Engineering/data/hotels_test.csv
+Projects/PROJECT-3. EDA + Feature Engineering/data/hotels_train.csv
+Projects/PROJECT-3. EDA + Feature Engineering/data/submission.csv

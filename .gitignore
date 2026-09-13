@@ -215,3 +215,10 @@ Notes/15_ML/data_ml2/audi.csv
 Notes/15_ML/data_ml2/insurance.csv
 Projects/Project-4.ML/Project 4 - introduction.ipynb
 Projects/Project-5/data/train.csv
+Projects/Project-5/data/osrm_data_train.csv
+Projects/Project-5/data/weather_data.csv
+\Projects\Project-5\data\holiday_data.csv
+Projects/Project-5/data/Project5_osrm_data_test.csv
+Projects/Project-5/data/Project5_test_data.csv
+Projects/Project-5/data/submission_gb.csv
+Projects/Project-5/data/submission_XGBoost.csv

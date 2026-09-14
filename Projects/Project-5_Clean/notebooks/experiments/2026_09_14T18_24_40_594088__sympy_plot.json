@@ -1,0 +1,18 @@
+{
+  "experiment_name": "_sympy_plot",
+  "timestamp": "2026-09-14T18:24:40.594088",
+  "random_state": null,
+  "params": {
+    "type": "sympy",
+    "method": "_sympy_plot",
+    "notes": "\u0413\u0440\u0430\u0444\u0438\u043a \u0444\u0443\u043d\u043a\u0446\u0438\u0438. \u0421\u043e\u0445\u0440\u0430\u043d\u0451\u043d \u0444\u0430\u0439\u043b .png."
+  },
+  "metrics": null,
+  "features": null,
+  "versions": {
+    "numpy": "1.24.2",
+    "pandas": "2.0.1",
+    "sklearn": "1.2.2"
+  },
+  "baseline_rmsle": null
+}

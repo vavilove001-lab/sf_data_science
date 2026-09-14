@@ -1,0 +1,46 @@
+{
+  "experiment_name": "eda_correlation_v1",
+  "timestamp": "2026-09-14T17:34:02.717108",
+  "random_state": null,
+  "params": {
+    "type": "EDA",
+    "method": "correlation_heatmap",
+    "notes": "\u0422\u0435\u043f\u043b\u043e\u0432\u0430\u044f \u043a\u0430\u0440\u0442\u0430 \u043a\u043e\u0440\u0440\u0435\u043b\u044f\u0446\u0438\u0438 \u0432\u0441\u0435\u0445 \u0447\u0438\u0441\u043b\u043e\u0432\u044b\u0445 \u043f\u0440\u0438\u0437\u043d\u0430\u043a\u043e\u0432. \u0421\u043e\u0445\u0440\u0430\u043d\u0451\u043d \u0444\u0430\u0439\u043b .png."
+  },
+  "metrics": {
+    "num_features_in_matrix": 24,
+    "max_absolute_correlation": 1.0,
+    "target_corr_with_distance": 1.0
+  },
+  "features": [
+    "vendor_id",
+    "passenger_count",
+    "pickup_longitude",
+    "pickup_latitude",
+    "dropoff_longitude",
+    "dropoff_latitude",
+    "trip_duration",
+    "pickup_hour",
+    "pickup_day_of_week",
+    "haversine_distance",
+    "direction",
+    "geo_cluster",
+    "is_rush_hour",
+    "hour_sin",
+    "hour_cos",
+    "is_weekend",
+    "dow_sin",
+    "dow_cos",
+    "is_holiday",
+    "temperature",
+    "humidity",
+    "pressure",
+    "wind speed",
+    "precip"
+  ],
+  "versions": {
+    "numpy": "1.24.2",
+    "pandas": "2.0.1",
+    "sklearn": "1.2.2"
+  }
+}

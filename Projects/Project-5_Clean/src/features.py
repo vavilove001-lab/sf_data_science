@@ -1,8 +1,19 @@
 import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
+from sklearn.metrics import mean_squared_log_error
 
 # --- ГЕОМЕТРИЯ И РАССТОЯНИЯ ---
+
+def add_osrm_features(taxi_df: pd.DataFrame, osrm_df: pd.DataFrame) -> pd.DataFrame:
+    cols_to_merge = ['id', 'total_distance', 'total_travel_time', 'number_of_steps']
+    df = pd.merge(
+        taxi_df,
+        osrm_df[cols_to_merge],
+        on='id',
+        how='left'
+    )
+    return df
 
 def get_haversine_distance(lat1, lng1, lat2, lng2):
     """Считает расстояние в км по формуле гаверсинуса."""
@@ -109,76 +120,106 @@ def add_holiday_features(df: pd.DataFrame, holiday_df: pd.DataFrame) -> pd.DataF
             
     return df
 
-# --- ПОГОДА ---
+
 
 def fill_null_weather_data(df: pd.DataFrame) -> pd.DataFrame:
     """Заполняет пропуски в погодных данных медианой по колонке."""
     df = df.copy()
-    weather_cols = ['temp', 'feels_like', 'humidity', 'wind_speed', 'pressure']
-    # Берем только те колонки, которые реально есть в датасете
-    existing_cols = [c for c in weather_cols if c in df.columns]
     
-    for col in existing_cols:
-        median_val = df[col].median()
-        df[col] = df[col].fillna(median_val)
-        
+    # Погодные числовые столбцы — заполняем медианой по дате
+    weather_numeric_cols = ['temperature', 'visibility', 'wind speed', 'precip']
+    for col in weather_numeric_cols:
+        df[col] = df[col].fillna(
+            df.groupby('pickup_date')[col].transform('median')
+        )
+    
+    # Погодные явления — заполняем 'None'
+    df['events'] = df['events'].fillna('None')
+    
+    # OSRM-столбцы — заполняем медианой по столбцу
+    osrm_cols = ['total_distance', 'total_travel_time', 'number_of_steps']
+    for col in osrm_cols:
+        df[col] = df[col].fillna(df[col].median())
+    
     return df
 
-def add_weather_features(df: pd.DataFrame, weather_df: pd.DataFrame) -> pd.DataFrame:
+def add_weather_features(taxi_df: pd.DataFrame, weather_df: pd.DataFrame) -> pd.DataFrame:
+    # Оставляем только нужные столбцы из weather_data
+    weather_cols = ['time', 'temperature', 'visibility', 'wind speed', 'precip', 'events']
+    weather = weather_df[weather_cols].copy()
+    
+    # Создаём столбцы date и hour для объединения
+    weather['time'] = pd.to_datetime(weather['time'])
+    weather['date'] = weather['time'].dt.date
+    weather['hour'] = weather['time'].dt.hour
+    
+    # Удаляем исходный столбец time — он больше не нужен
+    weather = weather.drop(columns=['time'])
+    
+    # Объединяем по дате и часу (left join — сохраняем все поездки)
+    df = pd.merge(
+        taxi_df,
+        weather,
+        left_on=['pickup_date', 'pickup_hour'],
+        right_on=['date', 'hour'],
+        how='left'
+    )
+    
+    # Удаляем вспомогательные столбцы
+    df = df.drop(columns=['date', 'hour'])
+    
+    return df
+
+def remove_outliers(
+    df: pd.DataFrame,
+    speed_col: str = 'avg_speed',
+    duration_col: str = 'trip_duration',
+    threshold_seconds: int = 24 * 3600,
+    threshold_speed: float = 300,
+    verbose: bool = True
+) -> pd.DataFrame:
     """
-    Присоединяет погодные данные к поездкам.
-    Ожидает, что в weather_df есть колонки: 'date' (datetime или str) и 'hour' (int).
+    Удаляет выбросы по длительности поездки и средней скорости.
+    
+    Параметры:
+        df: исходный DataFrame
+        speed_col: название колонки со скоростью (км/ч)
+        duration_col: название колонки с длительностью (секунды)
+        threshold_seconds: максимальная длительность (по умолчанию 24 часа)
+        threshold_speed: максимальная скорость (по умолчанию 300 км/ч)
+        verbose: печатать статистику
+        
+    Возвращает:
+        очищенный DataFrame
     """
     df = df.copy()
-    weather_df = weather_df.copy()  # Чтобы не менять оригинал случайно
-
-    # --- 1. Подготовка ключей в ОСНОВНОМ датасете (такси) ---
-    if 'pickup_datetime' in df.columns:
-        df['merge_date'] = df['pickup_datetime'].dt.date
-        df['merge_hour'] = df['pickup_datetime'].dt.hour
-    elif 'pickup_date' in df.columns and 'pickup_hour' in df.columns:
-        # Если даты уже разбиты на отдельные колонки
-        df['merge_date'] = df['pickup_date']
-        df['merge_hour'] = df['pickup_hour'].astype(int)
-    else:
-        print("⚠️ В датасете поездок нет ни pickup_datetime, ни пары pickup_date/pickup_hour. Погода не будет добавлена.")
-        return df
-
-    # --- 2. Подготовка ключей в ПОГОДНОМ датасете ---
-    # Проверяем, есть ли уже merge_date/merge_hour (на случай, если файл уже обработан)
-    if 'merge_date' not in weather_df.columns or 'merge_hour' not in weather_df.columns:
-        
-        # Приводим дату погоды к формату datetime, если это строка
-        if 'date' in weather_df.columns and not pd.api.types.is_datetime64_any_dtype(weather_df['date']):
-            try:
-                weather_df['date'] = pd.to_datetime(weather_df['date'], format='%Y-%m-%d')
-            except Exception:
-                weather_df['date'] = pd.to_datetime(weather_df['date'])
-        
-        # Создаем ключи для мёрджа
-        weather_df['merge_date'] = weather_df['date'].dt.date
-        
-        # ВАЖНО: колонка с часами может называться 'hour' или быть вычисляемой
-        if 'hour' in weather_df.columns:
-            weather_df['merge_hour'] = weather_df['hour'].astype(int)
-        else:
-            # Если колонки hour нет, пробуем взять из time или оставить None
-            print("⚠️ Колонка 'hour' не найдена в weather_data. Используем 0 как заглушку (это ошибка данных).")
-            weather_df['merge_hour'] = 0
-
-    # --- 3. Мёрдж ---
-    cols_to_merge = ['temperature', 'humidity', 'pressure', 'wind speed', 'precip', 'merge_date', 'merge_hour']
-    # Оставляем только те колонки, которые реально есть в файле погоды
-    available_cols = [c for c in cols_to_merge if c in weather_df.columns]
+    original_len = len(df)
     
-    # Убираем дубликаты в погоде по паре (дата, час)
-    weather_agg = weather_df[available_cols].drop_duplicates(subset=['merge_date', 'merge_hour'])
+    # Считаем выбросы
+    num_outliers_duration = (df[duration_col] > threshold_seconds).sum()
+    num_outliers_speed = (df[speed_col] > threshold_speed).sum()
     
-    df = df.merge(weather_agg, on=['merge_date', 'merge_hour'], how='left')
+    if verbose:
+        print(f"Выбросы по длительности (>{threshold_seconds / 3600:.0f} ч): {num_outliers_duration}")
+        print(f"Выбросы по скорости (>{threshold_speed} км/ч): {num_outliers_speed}")
     
-    # Удаляем временные ключи, если они не нужны дальше
-    if 'merge_date' in df.columns:
-        df.drop(columns=['merge_date', 'merge_hour'], inplace=True)
-        
+    # Маска: удаляем, если хотя бы одно условие выполнено
+    mask_to_drop = (df[duration_col] > threshold_seconds) | (df[speed_col] > threshold_speed)
+    
+    df = df[~mask_to_drop].copy()
+    
+    if verbose:
+        removed = original_len - len(df)
+        pct = removed / original_len * 100
+        print(f"Удалено: {removed:,} строк ({pct:.2f}%). Осталось: {len(df):,}")
+    
     return df
 
+
+
+def calc_rmsle_from_log(y_true_log, y_pred_log):
+    y_true = np.expm1(y_true_log)
+    y_pred = np.expm1(y_pred_log)
+    # Не даём прогнозу уйти в минус — минимальная длительность поездки 0 секунд
+    y_pred = np.maximum(y_pred, 0)
+    return np.sqrt(mean_squared_log_error(y_true, y_pred))

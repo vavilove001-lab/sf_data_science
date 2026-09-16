@@ -1,92 +1,77 @@
 import json
 import os
 from datetime import datetime
-from typing import Any, Dict, List
-
-import numpy as np
+from typing import Any
 import pandas as pd
+import numpy as np
 import sklearn
 
 
 def log_experiment(
-    experiment_name: str,
-    params: Dict[str, Any],
-    metrics: Dict[str, float],
-    feature_list: List[str],
-    random_state: int,
+    name: str,
+    params: dict,
+    metrics: dict,
+    features: list[str],
+    random_state: int = 42,
+    output_dir: str = "experiments",
+    artifact_path: str | None = None,
     baseline_rmsle: float | None = None,
-    output_dir: str = "experiments"
-) -> Dict[str, Any]:
+) -> dict:
     """
-    Логирует один эксперимент в JSON-файл.
-    Если передан baseline_rmsle, добавляет флаг warning_needed, если модель хуже baseline.
+    Логирует эксперимент в JSON и обновляет summary.csv.
+    Ничего не печатает — молча пишет в файлы.
     """
     os.makedirs(output_dir, exist_ok=True)
 
     log_data = {
-        "experiment_name": experiment_name,
+        "experiment_name": name,
         "timestamp": datetime.now().isoformat(),
         "random_state": random_state,
         "params": params,
         "metrics": metrics,
-        "features": feature_list,
+        "features": features,
+        "baseline_rmsle": baseline_rmsle,
+        "artifact_path": artifact_path,
         "versions": {
             "numpy": np.__version__,
             "pandas": pd.__version__,
             "sklearn": sklearn.__version__,
         },
-        "baseline_rmsle": baseline_rmsle,
     }
 
-    # Автоматически помечаем, если модель хуже наивного прогноза
     if baseline_rmsle is not None and "rmsle_valid" in metrics:
         log_data["warning_needed"] = metrics["rmsle_valid"] > baseline_rmsle
-        if log_data["warning_needed"]:
-            print(f"⚠️ ВНИМАНИЕ: модель хуже baseline (valid={metrics['rmsle_valid']:.4f} > baseline={baseline_rmsle:.4f})")
-        else:
-            print("✅ Модель лучше baseline")
+    else:
+        log_data["warning_needed"] = False
 
-    timestamp_clean = (
-        log_data["timestamp"]
-        .replace(":", "_")
-        .replace(".", "_")
-        .replace("-", "_")
-    )
-    filename = f"{timestamp_clean}_{experiment_name}.json"
-    filepath = os.path.join(output_dir, filename)
-
-    with open(filepath, "w", encoding="utf-8") as f:
+    # JSON
+    ts = log_data["timestamp"].replace(":", "_").replace(".", "_").replace("-", "_")
+    json_path = os.path.join(output_dir, f"{ts}_{name}.json")
+    with open(json_path, "w", encoding="utf-8") as f:
         json.dump(log_data, f, indent=2, default=str)
 
-    print(f"✅ Эксперимент залогирован: {filepath}")
-    return log_data
-
-
-def update_summary_table(
-    log_data: Dict[str, Any], summary_path: str = "experiments/summary.csv"
-) -> None:
+    # summary.csv
+    summary_path = os.path.join(output_dir, "summary.csv")
     row = {
-        "experiment_name": log_data["experiment_name"],
+        "experiment_name": name,
         "timestamp": log_data["timestamp"],
-        "random_state": log_data["random_state"],
-        "model_type": log_data["params"].get("model_type", "unknown"),
-        "max_depth": log_data["params"].get("max_depth"),
-        "n_estimators": log_data["params"].get("n_estimators"),
-        "rmsle_train": log_data["metrics"].get("rmsle_train"),
-        "rmsle_valid": log_data["metrics"].get("rmsle_valid"),
-        "num_features": len(log_data["features"]),
-        "notes": log_data.get("notes", ""),
-        "baseline_rmsle": log_data.get("baseline_rmsle"),
-        "warning_needed": log_data.get("warning_needed", False),
+        "model_type": params.get("model_type", "unknown"),
+        "rmsle_train": metrics.get("rmsle_train"),
+        "rmsle_valid": metrics.get("rmsle_valid"),
+        "rmsle_holdout": metrics.get("rmsle_holdout"),
+        "leaderboard_public": metrics.get("leaderboard_public"),    # ← добавить
+        "leaderboard_private": metrics.get("leaderboard_private"),  # ← добавить
+        "baseline_rmsle": baseline_rmsle,
+        "num_features": len(features),
+        "warning_needed": log_data["warning_needed"],
+        "artifact_path": artifact_path or "",
     }
-
     df_row = pd.DataFrame([row])
 
     if os.path.exists(summary_path):
-        df_summary = pd.read_csv(summary_path)
-        df_summary = pd.concat([df_summary, df_row], ignore_index=True)
+        df_summary = pd.concat([pd.read_csv(summary_path), df_row], ignore_index=True)
     else:
         df_summary = df_row
 
     df_summary.to_csv(summary_path, index=False)
-    print("✅ Сводная таблица обновлена:", summary_path)
+    return log_data

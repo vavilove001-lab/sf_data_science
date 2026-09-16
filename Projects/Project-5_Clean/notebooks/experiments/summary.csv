@@ -1,6 +1,0 @@
-experiment_name,timestamp,random_state,model_type,max_depth,n_estimators,rmsle_train,rmsle_valid,num_features,notes
-rf_all_features_v1,2026-09-14T14:55:21.725939,42.0,RandomForestRegressor,11.0,200.0,0.416,0.429,23,
-baseline_mean_v1,2026-09-14T15:00:57.318857,,Baseline (mean),,,,0.891,0,
-rf_reduced_no_weather_v1,2026-09-14T15:11:20.417505,42.0,RandomForestRegressor,11.0,200.0,0.4163,0.4289,21,
-eda_correlation_v1,2026-09-14T17:34:02.717108,,unknown,,,,,24,
-eda_correlation_v1,2026-09-14T17:35:28.466291,,unknown,,,,,24,

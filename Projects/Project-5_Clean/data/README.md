@@ -1,24 +1,37 @@
-# Data
 
-Raw data files are not committed to the repository.
+```markdown
+# Data Folder: Источники и описание датасетов
 
-## Required files
+В этой папке хранятся все данные, необходимые для обучения и валидации модели. Файлы разделены на исходные и предобработанные (внешние источники).
 
-Place the following files in this directory:
+## Основные датасеты
 
-| File | Description |
-| :--- | :--- |
-| `train.csv` | Main training dataset with trip details |
-| `Project5_test_data.csv` | Test dataset for final predictions |
-| `osrm_data_train.csv` | OSRM route features for training set |
-| `Project5_osrm_data_test.csv` | OSRM route features for test set |
-| `holiday_data.csv` | Public holidays calendar |
-| `weather_data.csv` | Historical weather conditions |
+| Файл | Тип | Описание | Источник |
+| :--- | :--- | :--- | :--- |
+| `train.csv` | Исходный | Обучающая выборка с таргетом `trip_duration`. Содержит сырые данные о поездках. | Kaggle (Taxi Trip Duration) |
+| `Project5_test_data.csv` | Исходный | Тестовая выборка без таргета. Используется для генерации финального сабмишна. | Kaggle (Taxi Trip Duration) |
 
-## Instructions
+## Внешние и предобработанные данные
 
-1. Download the required files from the competition source or your local storage.
-2. Place them directly into the `data/` folder.
-3. Run `notebooks/trip_duration_prediction.ipynb` to start the pipeline.
+Эти файлы были получены или рассчитаны отдельно и добавлены в проект для обогащения признаков.
 
-> ⚠️ **Note:** Do not commit `.csv` files to Git. They are ignored by `.gitignore`.
+| Файл | Описание | Как используется |
+| :--- | :--- | :--- |
+| `holiday_data.csv` | Календарь праздников и выходных дней. Содержит даты и тип дня (рабочий/выходной). | Используется в `src/features.py` для создания бинарного признака `is_holiday`. |
+| `weather_data.csv` | Исторические данные о погоде (температура, осадки, ветер) по дням. | Используется для добавления погодных условий как признаков к поездкам. |
+| `osrm_data_train.csv` | Данные о маршрутах из OSRM (Open Source Routing Machine). Содержит расчетное время в пути и расстояние для обучающей выборки. | Используется для создания признаков `osrm_travel_time`, `osrm_distance`. |
+| `Project5_osrm_data_test.csv` | Аналогично `osrm_data_train.csv`, но для тестовой выборки. | Используется для генерации тех же признаков на тестовых данных. |
+
+## Важные примечания
+
+1. **Целостность данных:** Не удаляйте и не переименовывайте файлы. Модули в папке `src` жестко привязаны к этим именам.
+2. **Порядок загрузки:** В ноутбуке `trip_duration_prediction.ipynb` данные загружаются последовательно: сначала основные CSV, затем внешние (погода, праздники, OSRM).
+3. **Отсутствие пропусков:** Все файлы синхронизированы по ключам (ID поездки или дате). При ручном изменении данных может нарушиться соответствие строк.
+
+## Как добавить новые данные
+
+Если вы планируете добавить новый источник (например, данные о пробках):
+1. Положите файл в эту папку.
+2. Обновите функцию загрузки в `src/data_utils.py`.
+3. Добавьте логику обработки в `src/features.py`.
+4. Обновите этот README, описав новый файл.

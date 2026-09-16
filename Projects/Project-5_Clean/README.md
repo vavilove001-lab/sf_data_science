@@ -1,52 +1,54 @@
-# NYC Taxi Trip Duration Prediction
-<center> <img src=https://storage.googleapis.com/kaggle-competitions/kaggle/3333/media/taxi_meter.png align="right" width="300"/> </center>
+# <center> **NYC Taxi Trip Duration Prediction**
 
-# Quick Start
-1. Clone the repo:
-   ```bash
-   git clone https://github.com/yourname/trip-duration-prediction.git
-   cd trip-duration-prediction
-2. Install dependencies:
-    ```bash
-    pip install -r requirements.txt
-3. Download data files (see data/README.md) and place them in data/
-4. Run the notebook:
-jupyter notebook notebooks/trip_duration_prediction.ipynb
+## **Оглавление**
+1. [Описание проекта](#Описание-проекта)
+2. [Описание данных](#Описание-данных)
+3. [Зависимости](#Зависимости)
+4. [Установка проекта](#Установка-проекта)
+5. [Использование проекта](#Использование-проекта)
+6. [Результаты и выводы](#Результаты)
+7. [Авторы](#Авторы)
 
 
+## 1. Описание проекта
 
-## Project Structure
-trip-duration-prediction/ ├── data/ # Raw data (not committed, see data/README.md) ├── notebooks/ # Main project notebook ├── src/ # Reusable functions (feature engineering, metrics, data loading) ├── submission.csv # Final predictions ├── requirements.txt ├── .gitignore └── README.md
-
+**Цель проекта** — построить регрессионную модель для предсказания длительности поездки (`trip_duration`). Построение моделей будет идти по принципу от простого к сложному.
 
 **Задача:** предсказание длительности поездки такси в Нью‑Йорке по признакам поездки (координаты, время, погода, OSRM‑маршрут и др.) с оценкой по метрике RMSLE.
 
-## Содержание
+**Основные этапы выполнения проекта:**
+* загрузка и предобработка данных
+* разведывательный анализ данных 
+* создание универсального preprocessor = ColumnTransformer
+* Пайплайны:
+    * LinearRegression
+    * PolynomialFeatures(degree=2), Ridge(alpha=1.0)
+    * DecisionTreeRegressor с подбором оптимальной max_depth 
+    * RandomForestRegressor - по результатам работы алгоритма ранжируем признаки по важности 
+    * GradientBoostingRegressor
+    * HistGradientBoostingRegressor
+    * VotingRegressor
+* подгрузка тестовых данных, их подготовка и построение прогноза на модели с наилучшими результатами
+* все результаты работы логируются
+* получение submission и участие в соревновании на Kaggle
 
-- [Описание задачи](#описание-задачи)
-- [Данные](#данные)
-- [Предобработка и признаки](#предобработка-и-признаки)
-- [Моделирование](#моделирование)
-- [Оценка качества](#оценка-качества)
-- [Запуск проекта](#запуск-проекта)
-- [Результаты](#результаты)
-- [Авторы](#авторы)
+## Структура проекта
 
----
+Проект организован по модульному принципу: 
+- логика вынесена в `src/`, 
+- данные изолированы в `data/`, 
+- результаты экспериментов хранятся в `experiments/`.
 
-## Описание задачи
+Project-5_Clean/ ├── .gitignore # Правила игнорирования файлов для Git ├── requirements.txt # Список зависимостей Python ├── README.md # Эта документация ├── data/ # Исходные и предобработанные данные │ ├── .gitkeep # Маркер непустой папки для Git │ ├── train.csv # Обучающая выборка (с таргетом trip_duration) │ ├── Project5_test_data.csv# Тестовая выборка (без таргета) │ ├── holiday_data.csv # Календарь праздников и выходных │ ├── weather_data.csv # Исторические данные о погоде │ ├── osrm_data_train.csv # Маршруты и расстояния (OSRM) для train │ ├── Project5_osrm_data_test.csv # Маршруты и расстояния (OSRM) для test │ └── README.md # Описание файлов данных и источников ├── experiments/ # Результаты экспериментов │ ├── summary.csv # Лог всех запусков (модель, параметры, RMSE) │ ├── plots/ # Папка для графиков (опционально) │ │ ├── learning_curve.png │ │ └── feature_importance.png │ └── submission_v1.csv # Финальный сабмишн для соревнования ├── notebooks/ # Jupyter Notebook с основным пайплайном │ └── trip_duration_prediction.ipynb ├── src/ # Модули проекта (вынесенная логика) │ ├── init.py # Инициализация пакета src │ ├── data_utils.py # Функции загрузки, валидации и базовой очистки данных │ ├── features.py # Генерация признаков (погода, праздники, OSRM, гео-фичи) │ └── experiment_logger.py # Логирование результатов в summary.csv └── .pycache/ # Кэш скомпилированных Python-модулей (игнорируется Git)
 
-Цель проекта — построить регрессионную модель для предсказания длительности поездки (`trip_duration`) по данным о поездке. Поскольку длительность имеет правостороннюю асимметрию и много выбросов, целевая переменная преобразуется как `log1p(trip_duration)`, а качество оценивается по **RMSLE** (Root Mean Squared Logarithmic Error).
+### Назначение ключевых модулей
 
-**Основные цели проекта:**
-1. Сформировать набор данных на основе нескольких источников информации
-2. Спроектировать новые признаки с помощью Feature Engineering и выявить наиболее значимые при построении модели
-3. Исследовать предоставленные данные и выявить закономерности
-4. Построить несколько моделей и выбрать из них наилучшую по заданной метрике
-5. Спроектировать процесс предсказания времени длительности поездки для новых данных
----
+- **`src/data_utils.py`**: Отвечает за загрузку CSV-файлов из папки `data/`. 
+- **`src/features.py`**: Центральная логика создания признаков. Здесь объединяются данные из `train.csv`, `weather_data.csv`, `holiday_data.csv` и `osrm_*.csv`.
+- **`src/experiment_logger.py`**: Автоматически фиксирует параметры модели и метрики (RMSE) в `experiments/summary.csv` после каждого запуска.
+- **`notebooks/trip_duration_prediction.ipynb`**: Основной ноутбук, который импортирует функции из `src/` и управляет пайплайном обучения.
 
-## Данные
+2. ## Данные
 
 Используемые датасеты:
 
@@ -78,127 +80,94 @@ trip-duration-prediction/ ├── data/ # Raw data (not committed, see data/RE
 4. **Календарь и праздники**: `holiday_data.csv` — признак «праздничный день».
 5. **Географические кластеры**: предобработанные метки кластеров (`geo_cluster_*`) на основе координат.
 
----
+### Оценка качества
 
-## Предобработка и признаки
-
-Основные шаги предобработки:
-
-1. **Парсинг и извлечение временных признаков**:
-   - Конвертация `pickup_datetime` в `datetime`.
-   - Извлечение: час дня, день недели, признак «праздник».
-2. **Географические признаки**:
-   - Haversine‑расстояние между точками.
-   - Кластеризация координат (KMeans) и One‑Hot кодирование кластеров.
-3. **Внешние источники**:
-   - Слияние с OSRM (время/расстояние маршрута).
-   - Слияние с погодой по паре `(дата, час)`.
-4. **Кодирование категориальных признаков**:
-   - Бинаризация флагов (`store_and_fwd_flag`, `vendor_id`).
-   - One‑Hot Encoding для категориальных переменных через `OneHotEncoder` (fit на train, transform на test).
-5. **Масштабирование**:
-   - `StandardScaler` применяется к числовым признакам (fit на train, transform на test/valid).
-6. **Обработка пропусков**:
-   - Пропуски в погодных признаках заполняются медианой.
-
-**Ключевые признаки:**
-
-- Временные: `pickup_hour`, `pickup_day_of_week_*`, `pickup_holiday`.
-- Географические: `haversine_distance`, `geo_cluster_*`.
-- Маршруты: `total_distance`, `total_travel_time`, `number_of_steps`.
-- Погода: `temperature`, `visibility`, `precip`, `wind speed`.
-
----
-
-## Моделирование
-
-В качестве основной модели используется **градиентный бустинг** (XGBoost) в режиме регрессии:
-
-- Целевая переменная: `y_log = np.log(y)`.
-- Модель обучается на логарифмах длительности.
-- Предсказания преобразуются обратно: `y_pred = np.exp(y_pred_log) - 1`.
-- Для предотвращения отрицательных значений применяется `np.maximum(y_pred, 0)`.
-
-**Пайплайн обучения и инференса:**
-
-- Разделение на train/valid/test.
-- Обучение `OneHotEncoder` и `StandardScaler` только на train.
-- Применение трансформаций к valid и test без повторного обучения.
-- Использование `xgb.DMatrix` с корректным списком признаков (`feature_names` как список строк).
-
-**Гиперпараметры (пример):**
-
-```python
-params = {
-    learning_rate = 0.5,
-    n_estimators = 100,
-    max_depth = 6,
-    min_samples_split = 30
-}
-```
-## Оценка качества
-**Метрика**: мы будем следовать канонам исходного соревнования на Kaggle и в качестве метрики использовать **RMSLE (Root Mean Squared Log Error),** которая вычисляется как:
+**Метрика**:  **RMSLE (Root Mean Squared Log Error),** которая вычисляется как:
 
 $$RMSLE = \sqrt{\frac{1}{n}\sum_{i=1}^n(log(y_i+1)-log(\hat{y_i}+1))^2},$$
 
 где:
 * $y_i$ - истинная длительность i-ой поездки на такси (trip_duration)
 * $\hat{y_i}$- предсказанная моделью длительность i-ой поездки на такси
-
 * Оценка на **валидационной выборке** доступна локально.
 * Оценка на **тестовой выборке** — только через сабмит на Kaggle.
 
-### Типичные диапазоны RMSLE для этой задачи:
 
-RMSLE	Оценка
+## Используемые зависимости
+* Python (3.10):
+    * pandas=2.0.1
+    * numpy=1.24.2
+    * scikit-learn=1.2.2
+    * scipy=1.15.3
+    * matplotlib=3.10.8
+    * seaborn=0.13.2
 
-* ≥ 0.40	Базовый уровень
-* 0.35–0.40	Нормальный результат
-* 0.30–0.35	Хороший результат
-* < 0.30	Отличный результат
 
-## Запуск проекта
-### Требования
-* Python 3.8+
-* Библиотеки: pandas, numpy, scikit-learn, xgboost, matplotlib, seaborn
+## Установка проекта
 
-Установить зависимости:
+```
+git clone https://github.com/vavilove001-lab/NYC-Taxi-Trip-Duration-Prediction
+```
 
-bash
-pip install pandas numpy scikit-learn xgboost matplotlib seaborn
+## Использование
 
-## Основные шаги запуска
-1. Подготовить признаки (функции add_datetime_features, add_weather_features и др.).
-2. Обучить энкодеры и скалер на тренировочных данных.
-3. Применить трансформации к валидации и тесту.
-4. Обучить XGBoost
-5. Получить предсказания, сделать обратное преобразование (exp - 1).
-6. Сформировать submission_gb.csv с колонками id и trip_duration.
+1. Clone the repo:
+   ```bash
+   git clone https://github.com/vavilove001-lab/NYC-Taxi-Trip-Duration-Prediction
+   cd trip-duration-prediction
+2. Install dependencies:
+    ```bash
+    pip install -r requirements.txt
+3. Download data files (see data/README.md) and place them in data/
+4. Run the notebook:
+notebooks/trip_duration_prediction.ipynb
 
-# Результаты
-- **Валидационная метрика RMSLE (локально):** **0.3941**
-- **Тестовая метрика RMSLE (Kaggle):**
-    -  `submission_XGBoost.csv`: **0.40098**
-    - `submission_gb.csv`: **0.40083**
 
-### Results Table
+## Результаты и выводы
+* Распределение целевой переменной
+![](experiments/2026_09_16_09_06_59_target_distribution.png)
+* Распределение поездок по часам и медианная длительность
+![](experiments/2026_09_16_09_08_08_hourly_trips.png)
+* Распределение количества поездок по дням недели и медианная длительность по дням недели
+![](experiments/2026_09_16_09_10_41_day_of_week_trips.png)
+* Тепловая карта зависимости длительности поездки от часа дня и дня недели
+![](experiments/2026_09_16_09_13_08_heatmap_hour_dow.png)
+* Распределение по кластерам начальных и финальных точек поездок
+![](experiments/2026_09_16_09_16_53_pickup_dropoff_scatter.png)
 
-```markdown
-## Results
+## Результаты экспериментов
 
-| Model              | RMSLE (valid) | RMSLE (holdout) | Public LB | Private LB |
-|--------------------|---------------|-----------------|-----------|------------|
-| Linear Regression  | 0.516         | 0.518           | —         | —          |
-| Ridge + Poly       | 0.454         | 0.456           | —         | —          |
-| Decision Tree      | 0.427         | 0.430           | —         | —          |
-| Random Forest      | 0.411         | 0.413           | —         | —          |
-| HistGradientBoost  | 0.401         | 0.400           | —         | —          |
-| Stacking           | 0.400         | 0.399           | —         | —          |
-| **Final (HistGB)** | —             | —               | 0.41060   | **0.40830**|
+Все запуски в хронологическом порядке. Метрика — **RMSLE** (логарифмический масштаб, `log1p(target)`). Baseline — линейная регрессия (RMSLE 0.5164).
 
-> ## **Вывод:** 
-Модели демонстрируют стабильную работу, но требуют дальнейшей доработки для попадания в топ-сегменты лидерборда.
-- **Файл сабмита:** `submission_gb.csv`
+| Model                       | RMSLE (valid) | RMSLE (holdout) | Public LB | Private LB |
+|-----------------------------|---------------|-----------------|-----------|------------|
+| Linear Regression           | 0.516         | 0.518           | —         | —          |
+| Ridge + PolynomialFeatures  | 0.454         | 0.458           | —         | —          |
+| Decision Tree               | 0.432         | 0.434           | —         | —          |
+| Random Forest               | 0.416         | 0.418           | —         | —          |
+| **Gradient Boosting**       | **0.408**     | **0.409**       | —         | —          |
+| Hist Gradient Boosting      | 0.405         | 0.406           | —         | —          |
+| Voting (Ridge + RF + HGBM)  | 0.412         | 0.414           | —         | —          |
+| **Final (GradientBoosting)**| —             | —               | 0.41257   | **0.40902**|
+
+> Все значения RMSLE — в логарифмическом масштабе (`log1p`). Полный лог — `experiments/summary.csv`.
+
+
+>**Leaderboard**: Public — 0.41257, Private — 0.40902. 
+
+### **Интерпретация результатов**
+1. От baseline к бустингу — снижение ошибки на ~21%. Линейная регрессия (RMSLE 0.518) не улавливала нелинейные зависимости. Переход к деревьям и ансамблям последовательно снижал ошибку, и градиентный бустинг стал точкой максимума на тесте (0.4090).
+
+2. HistGradientBoosting vs GradientBoosting. HistGradientBoosting показал лучшую валидацию (0.4046 vs 0.4077), но на тесте классический GradientBoosting оказался стабильнее (0.4090 vs 0.4060). Финальный сабмишн отправлен именно на GradientBoosting, и приватный лидерборд (0.40902) это подтвердил.
+
+3. VotingRegressor — неудачный эксперимент. Усреднение Ridge, RandomForest и HistGBM не дало прироста (RMSLE 0.4142) — ошибки базовых моделей коррелировали, и ансамбль не помог.
+
+4. Переобучение под контролем. Разрыв между Train и Test у финальной модели составляет ~0.023 — умеренный для бустинга. Дальнейший рост сложности (больше итераций, глубже деревья) увеличивал этот разрыв без улучшения теста.
+
+## Способы улучшения метрики
+1. подбор гиперпараметров у GradientBoosting 
+2. feature engineering и создание новых признаков 
+3. Стекинг 
 
 ## Авторы
-Вавилов Павел
+* [Вавилов Павел](https://github.com/vavilove001-lab)

@@ -222,3 +222,5 @@ Projects/Project-5/data/Project5_osrm_data_test.csv
 Projects/Project-5/data/Project5_test_data.csv
 Projects/Project-5/data/submission_gb.csv
 Projects/Project-5/data/submission_XGBoost.csv
+Projects/KDVavilov/data/amocrm_export_leads_2026-09-20.csv
+Projects/KDVavilov/notebooks/KDVavilove.ipynb
